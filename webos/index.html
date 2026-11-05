@@ -27,8 +27,6 @@
   --radius: 26px;
   color-scheme: dark;
 }
-@property --tx { syntax: "<number>"; inherits: true; initial-value: 0; }
-@property --ty { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 html, body { height: 100%; }
 body {
@@ -45,20 +43,24 @@ body {
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; outline: none; }
 
-/* ---------- hero / top shelf ---------- */
-.hero { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
+/* ---------- hero / top shelf ----------
+   Performance: the hero is a small pre-rendered canvas scaled up (no CSS blur filters), and every
+   animation only touches transform or opacity so the GPU compositor can run it without repainting. */
+.hero {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; opacity: 0;
+  transition: opacity .6s ease; will-change: opacity;
+}
 .hero.on { opacity: 1; }
-.hero .wash { position: absolute; inset: -8%; animation: drift 38s ease-in-out infinite alternate; }
-.hero .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .85; }
-@keyframes drift { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.12) translate(-2.5%, 1.5%); } }
-.grain { position: absolute; inset: 0; opacity: .07; mix-blend-mode: overlay; pointer-events: none; }
+.fx .hero.on { animation: drift 40s ease-in-out infinite alternate; will-change: opacity, transform; }
+@keyframes drift { from { transform: scale(1.02); } to { transform: scale(1.1) translate(-2%, 1%); } }
 .scrim {
-  position: absolute; inset: 0; pointer-events: none; transition: background .6s ease;
+  position: absolute; inset: 0; pointer-events: none;
   background:
     linear-gradient(90deg, rgba(5,6,8,.78) 0%, rgba(5,6,8,.35) 42%, rgba(5,6,8,0) 70%),
     linear-gradient(180deg, rgba(5,6,8,.35) 0%, rgba(5,6,8,0) 22%, rgba(5,6,8,0) 48%, rgba(5,6,8,.72) 100%);
 }
-#stage.deep .scrim { background: rgba(5,6,8,.72); }
+.deepdim { position: absolute; inset: 0; background: rgba(5,6,8,.74); opacity: 0; transition: opacity .45s ease; will-change: opacity; pointer-events: none; }
+#stage.deep .deepdim { opacity: 1; }
 
 .topbar {
   position: absolute; top: 52px; left: 96px; right: 96px; height: 64px;
@@ -77,7 +79,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .shelf {
   position: absolute; left: 96px; top: 210px; width: 980px; z-index: 3;
-  transition: opacity .45s ease, transform .6s cubic-bezier(.2,.8,.2,1);
+  transition: opacity .35s ease, transform .45s cubic-bezier(.2,.8,.2,1); will-change: opacity, transform;
 }
 #stage.deep .shelf { opacity: 0; transform: translateY(-40px); }
 .eyebrow { font-size: 22px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
@@ -88,18 +90,22 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .chip kbd { font-family: inherit; font-weight: 800; color: var(--ink); margin-right: 6px; }
 
 /* ---------- glass ---------- */
+/* Default: tinted glass with no live blur (cheap). With effects on: real backdrop blur. */
 .glass {
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(36px) saturate(1.7); backdrop-filter: blur(36px) saturate(1.7);
+  background: var(--glass-solid);
   border: 1px solid var(--glass-edge);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 30px 80px rgba(0,0,0,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
 }
-#stage.solid .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-solid); }
+.dock.glass, .chip.glass { background: rgba(20, 22, 28, .42); }
+.fx .glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6); backdrop-filter: blur(30px) saturate(1.6);
+}
 
 /* ---------- rows ---------- */
 #rows {
   position: absolute; left: 0; right: 0; top: 650px; z-index: 4;
-  transition: transform .6s cubic-bezier(.2,.8,.2,1);
+  transition: transform .45s cubic-bezier(.2,.8,.2,1); will-change: transform;
 }
 .row { position: relative; padding: 0 96px; }
 .row + .row { margin-top: 44px; }
@@ -107,30 +113,25 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .row-title { font-size: 24px; font-weight: 700; color: var(--ink-2); margin: 0 0 22px 4px; letter-spacing: .01em; }
 .grid { display: grid; grid-template-columns: repeat(6, var(--tile-w)); justify-content: space-between; row-gap: 56px; }
 
-.tile { position: relative; width: var(--tile-w); perspective: 900px; display: block; }
+.tile { position: relative; width: var(--tile-w); display: block; }
+.lift { position: relative; transition: transform .26s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+.tile.focused .lift { transform: translateY(-10px) scale(1.14); }
+.tile.focused.manual .lift { transition: transform .1s linear; }
+.shadow {
+  position: absolute; left: 10px; right: 10px; top: 16px; bottom: -6px; border-radius: var(--radius);
+  box-shadow: 0 28px 46px rgba(0,0,0,.7); opacity: 0; transition: opacity .26s ease; will-change: opacity;
+}
+.tile.focused .shadow { opacity: 1; }
 .card {
   position: relative; width: var(--tile-w); height: var(--tile-h); border-radius: var(--radius);
-  overflow: hidden; transform-style: preserve-3d;
-  box-shadow: 0 10px 24px rgba(0,0,0,.35);
-  transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease;
-}
-.tile.focused .card {
-  transform: translateY(-10px) scale(1.14) rotateX(calc(var(--ty) * -7deg)) rotateY(calc(var(--tx) * 9deg));
-  box-shadow: 0 34px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08);
-  animation: sway 7s ease-in-out infinite;
-}
-.tile.focused.manual .card { animation: none; transition: transform .12s linear, box-shadow .32s ease; }
-@keyframes sway {
-  0%, 100% { --tx: 0; --ty: 0; }
-  25% { --tx: .35; --ty: -.2; }
-  50% { --tx: 0; --ty: .25; }
-  75% { --tx: -.35; --ty: -.1; }
+  overflow: hidden; box-shadow: 0 8px 18px rgba(0,0,0,.32);
 }
 .art { position: absolute; inset: 0; display: grid; place-items: center; }
-.fg { position: relative; display: flex; align-items: center; gap: 14px; transform: translate(calc(var(--tx) * 7px), calc(var(--ty) * 5px)); transition: transform .12s linear; }
+.fg { position: relative; display: flex; align-items: center; gap: 14px; }
 .glare {
-  position: absolute; inset: -40%; pointer-events: none; opacity: 0; transition: opacity .3s;
-  background: radial-gradient(circle at calc(50% + var(--tx) * 30%) calc(35% + var(--ty) * 30%), rgba(255,255,255,.32), rgba(255,255,255,0) 38%);
+  position: absolute; left: -50%; top: -90%; width: 200%; height: 200%; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.30), rgba(255,255,255,0) 28%);
+  opacity: 0; transition: opacity .3s ease; will-change: opacity, transform;
 }
 .tile.focused .glare { opacity: 1; }
 .label {
@@ -151,10 +152,11 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 @keyframes bumpU { 50% { transform: translateY(-12px); } } @keyframes bumpD { 50% { transform: translateY(12px); } }
 
 /* edit / jiggle */
-#stage.editing .tile:not(.moving) .card { animation: jiggle .32s ease-in-out infinite alternate; }
+#stage.editing .tile:not(.moving) .card { animation: jiggle .32s ease-in-out infinite alternate; will-change: transform; }
 #stage.editing .tile:nth-child(2n) .card { animation-delay: -.16s; }
 @keyframes jiggle { from { transform: rotate(-1.1deg); } to { transform: rotate(1.1deg); } }
-#stage.editing .tile.moving .card { transform: translateY(-18px) scale(1.2); box-shadow: 0 46px 80px rgba(0,0,0,.7); animation: none; }
+#stage.editing .tile.moving .lift { transform: translateY(-18px) scale(1.2); }
+#stage.editing .tile.moving .shadow { opacity: 1; }
 #stage.editing .tile.moving .label { opacity: 1; transform: none; }
 .edit-banner {
   position: absolute; top: 52px; left: 50%; transform: translate(-50%, -220px); z-index: 8;
@@ -203,12 +205,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .a-info .fg { color: #fff; font-size: 34px; font-weight: 700; }
 
 /* ---------- control center ---------- */
-.layer-dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 9; }
+.layer-dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9; will-change: opacity; }
 .layer-dim.on { opacity: 1; pointer-events: auto; }
 #cc {
   position: absolute; top: 40px; right: 40px; bottom: 40px; width: 600px; border-radius: 48px; z-index: 10;
   padding: 44px 40px; display: flex; flex-direction: column; gap: 28px;
-  transform: translateX(720px); visibility: hidden; transition: transform .5s cubic-bezier(.2,.8,.2,1), visibility 0s .5s;
+  transform: translateX(720px); visibility: hidden; transition: transform .4s cubic-bezier(.2,.8,.2,1), visibility 0s .4s; will-change: transform;
 }
 #cc.open { transform: none; visibility: visible; transition-delay: 0s; }
 #cc header { display: flex; justify-content: space-between; align-items: baseline; }
@@ -236,9 +238,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #info {
   position: absolute; inset: 0; z-index: 12; display: grid; grid-template-columns: 760px 1fr; align-items: center;
   padding: 0 120px 0 96px; gap: 40px; background: #0d0f13;
-  opacity: 0; pointer-events: none; transform: scale(1.04); transition: opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1);
+  opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s .3s; will-change: opacity;
 }
-#info.open { opacity: 1; pointer-events: auto; transform: none; }
+#info.open { opacity: 1; visibility: visible; transition-delay: 0s; }
 .tv-figure { display: flex; flex-direction: column; align-items: center; gap: 26px; }
 .tv-screen {
   width: 560px; height: 330px; border-radius: 14px; border: 10px solid #1b1d22; position: relative; overflow: hidden;
@@ -272,17 +274,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 
 @media (prefers-reduced-motion: reduce) {
-  .hero .wash, .tile.focused .card, #stage.editing .tile .card { animation: none !important; }
+  .hero, #stage.editing .tile .card { animation: none !important; }
   * { transition-duration: .01s !important; }
 }
 </style>
 
 <div id="viewport">
   <div id="stage">
-    <div class="hero" id="heroA"></div>
-    <div class="hero" id="heroB"></div>
-    <canvas class="grain" id="grain" width="160" height="160"></canvas>
+    <canvas class="hero" id="heroA" width="480" height="270"></canvas>
+    <canvas class="hero" id="heroB" width="480" height="270"></canvas>
     <div class="scrim"></div>
+    <div class="deepdim"></div>
 
     <div class="topbar">
       <div class="brand" id="brand">Living Room</div>
@@ -327,7 +329,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <div class="cc-list">
         <button class="cc-row focusable" data-action="info">TV Information<small>43UR7550PSC</small></button>
         <button class="cc-row focusable" data-action="edit">Edit Home Screen<small>Rearrange apps</small></button>
-        <button class="cc-row focusable" data-action="solid">Reduce Transparency<span class="switch" id="solidSwitch"></span></button>
+        <button class="cc-row focusable" data-action="fx">Blur &amp; Motion Effects<span class="switch" id="fxSwitch"></span></button>
         <button class="cc-row focusable" data-launch="com.palm.app.settings" data-name="Settings">All Settings<small>webOS</small></button>
       </div>
     </aside>
@@ -420,23 +422,46 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   // ---- scale stage to the window ----
   function fit() {
     var w = window.innerWidth, h = window.innerHeight, s = Math.min(w / 1920, h / 1080);
+    if (Math.abs(s - 1) < 0.01) { stage.style.left = "0"; stage.style.top = "0"; stage.style.transform = "none"; return; }
+    stage.style.left = "50%"; stage.style.top = "50%";
     stage.style.transform = "translate(" + (-960 * s) + "px," + (-540 * s) + "px) scale(" + s + ")";
   }
   window.addEventListener("resize", fit); fit();
 
-  // ---- grain ----
-  (function () {
-    var c = $("#grain"), x = c.getContext("2d"), d = x.createImageData(160, 160);
+  // ---- hero art: drawn once per app into a small offscreen canvas, then cached ----
+  var HW = 480, HH = 270, heroCache = {}, noise = null;
+  function makeNoise() {
+    var c = document.createElement("canvas"); c.width = HW; c.height = HH;
+    var x = c.getContext("2d"), d = x.createImageData(HW, HH);
     for (var i = 0; i < d.data.length; i += 4) { var v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
-    x.putImageData(d, 0, 0);
-    stage.querySelector(".grain").style.cssText += ";width:1920px;height:1080px;image-rendering:pixelated";
-  })();
+    x.putImageData(d, 0, 0); return c;
+  }
+  function blob(x, cx, cy, r, color, alpha) {
+    var g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.globalAlpha = alpha; x.fillStyle = g; x.fillRect(0, 0, HW, HH); x.globalAlpha = 1;
+  }
+  function heroArt(a) {
+    if (heroCache[a.key]) return heroCache[a.key];
+    var c = document.createElement("canvas"); c.width = HW; c.height = HH;
+    var x = c.getContext("2d"), h = a.hue, k = HW / 1920;
+    var base = x.createLinearGradient(0, 0, HW, HH);
+    base.addColorStop(0, h[2]); base.addColorStop(0.55, h[0]); base.addColorStop(1, h[2]);
+    x.fillStyle = base; x.fillRect(0, 0, HW, HH);
+    blob(x, 1500 * k, 150 * k, 700 * k, h[1], 0.95);
+    blob(x, 1000 * k, 720 * k, 480 * k, h[0], 0.8);
+    blob(x, 1550 * k, 760 * k, 360 * k, h[2], 0.9);
+    if (!noise) noise = makeNoise();
+    x.globalAlpha = 0.05; x.globalCompositeOperation = "overlay"; x.drawImage(noise, 0, 0);
+    x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
+    return (heroCache[a.key] = c);
+  }
 
   // ---- render rows ----
   function tileHTML(a) {
     var art = a.icon === "hdmi" ? ICONS.hdmi(a.n) : ICONS[a.key];
     return '<button class="tile focusable' + (a.missing ? " missing" : "") + (a.key === movingKey ? " moving" : "") + '" data-key="' + a.key + '">' +
-      '<div class="card"><div class="art a-' + (a.icon || a.key) + '">' + art + '</div><div class="glare"></div></div>' +
+      '<div class="lift"><div class="shadow"></div><div class="card"><div class="art a-' + (a.icon || a.key) + '">' + art + '</div><div class="glare"></div></div></div>' +
       '<div class="label">' + a.name + "</div></button>";
   }
   function render() {
@@ -448,19 +473,21 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   }
 
   // ---- hero ----
-  var heroFlip = false, heroKey = null;
+  var heroFlip = false, heroKey = null, heroShown = null, heroTimer = null;
   function setHero(a) {
     if (heroKey === a.key) return; heroKey = a.key;
-    var el = heroFlip ? $("#heroA") : $("#heroB"), other = heroFlip ? $("#heroB") : $("#heroA"); heroFlip = !heroFlip;
-    var h = a.hue;
-    el.innerHTML = '<div class="wash" style="background:linear-gradient(120deg,' + h[2] + ' 0%,' + h[0] + ' 55%,' + h[2] + ' 100%)">' +
-      '<div class="orb" style="width:1100px;height:1100px;right:-180px;top:-380px;background:' + h[1] + '"></div>' +
-      '<div class="orb" style="width:760px;height:760px;right:520px;top:260px;background:' + h[0] + ';opacity:.7"></div>' +
-      '<div class="orb" style="width:520px;height:520px;right:120px;top:420px;background:' + h[2] + ';opacity:.9"></div></div>';
-    el.classList.add("on"); other.classList.remove("on");
     $("#shelfEyebrow").textContent = a.cat;
     $("#shelfTitle").textContent = a.name;
     $("#shelfBlurb").textContent = a.missing ? "This app wasn't found on the TV. Install it from LG Content Store." : a.blurb;
+    // Wait until focus settles so fast scrolling doesn't queue up cross-fades.
+    clearTimeout(heroTimer);
+    heroTimer = setTimeout(function () { paintHero(a); }, heroShown ? 160 : 0);
+  }
+  function paintHero(a) {
+    if (heroShown === a.key) return; heroShown = a.key;
+    var el = heroFlip ? $("#heroA") : $("#heroB"), other = heroFlip ? $("#heroB") : $("#heroA"); heroFlip = !heroFlip;
+    var x = el.getContext("2d"); x.clearRect(0, 0, HW, HH); x.drawImage(heroArt(a), 0, 0);
+    el.classList.add("on"); other.classList.remove("on");
   }
 
   // ---- focus ----
@@ -506,7 +533,11 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     focused.classList.remove("bump-left", "bump-right", "bump-up", "bump-down"); void focused.offsetWidth;
     focused.classList.add("bump-" + dir);
   }
-  function resetTilt(el) { var c = el.querySelector && el.querySelector(".card"); if (c) { c.style.removeProperty("--tx"); c.style.removeProperty("--ty"); } }
+  function resetTilt(el) {
+    if (!el || !el.querySelector) return;
+    var l = el.querySelector(".lift"), g = el.querySelector(".glare");
+    if (l) l.style.transform = ""; if (g) g.style.transform = "";
+  }
 
   // ---- actions ----
   var toastTimer;
@@ -533,7 +564,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     else if (act === "info") openLayer("info");
     else if (act === "close") closeLayer();
     else if (act === "edit") { closeLayer(); startEdit(); }
-    else if (act === "solid") setSolid(!stage.classList.contains("solid"));
+    else if (act === "fx") setFx(!stage.classList.contains("fx"));
   }
   var lastHomeFocus = null;
   function openLayer(name) {
@@ -550,7 +581,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     layer = "home"; if (focused) focused.classList.remove("focused"); focused = null;
     focus(lastHomeFocus && document.contains(lastHomeFocus) ? lastHomeFocus : stage.querySelector(".tile"));
   }
-  function setSolid(on) { stage.classList.toggle("solid", on); $("#solidSwitch").classList.toggle("on", on); save("solid", on); }
+  function setFx(on) { stage.classList.toggle("fx", on); $("#fxSwitch").classList.toggle("on", on); save("fx", on); }
 
   // ---- edit mode ----
   function startEdit() {
@@ -572,10 +603,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   // ---- keys (LG Magic Remote + keyboard) ----
   var DIRS = { 37: "left", 38: "up", 39: "right", 40: "down" };
-  var okTimer = null, okHeld = false;
+  var okTimer = null, okHeld = false, lastStep = 0;
   document.addEventListener("keydown", function (e) {
     var k = e.keyCode;
-    if (DIRS[k]) { e.preventDefault(); return editing ? shift(DIRS[k]) : move(DIRS[k]); }
+    if (DIRS[k]) {
+      e.preventDefault();
+      // Holding an arrow: step at a steady pace instead of as fast as the remote repeats.
+      var now = Date.now(); if (e.repeat && now - lastStep < 140) return; lastStep = now;
+      return editing ? shift(DIRS[k]) : move(DIRS[k]);
+    }
     if (k === 13) {
       e.preventDefault(); if (e.repeat) return;
       okHeld = false;
@@ -604,14 +640,23 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     var el = e.target.closest(".focusable"); if (!el || editing) return;
     if (scopeEls().indexOf(el) >= 0 && el !== focused) focus(el);
   });
+  var tiltFrame = 0, tiltEvt = null;
   stage.addEventListener("mousemove", function (e) {
-    if (!focused || !focused.classList.contains("tile")) return;
-    var card = focused.querySelector(".card"), r = focused.getBoundingClientRect();
-    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) { focused.classList.remove("manual"); resetTilt(focused); return; }
-    focused.classList.add("manual");
-    card.style.setProperty("--tx", (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
-    card.style.setProperty("--ty", (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
+    tiltEvt = e; if (!tiltFrame) tiltFrame = requestAnimationFrame(applyTilt);
   });
+  function applyTilt() {
+    tiltFrame = 0; var e = tiltEvt;
+    if (!e || !focused || !focused.classList.contains("tile") || editing) return;
+    var r = focused.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+      if (focused.classList.contains("manual")) { focused.classList.remove("manual"); resetTilt(focused); } return;
+    }
+    focused.classList.add("manual");
+    var tx = ((e.clientX - r.left) / r.width) * 2 - 1, ty = ((e.clientY - r.top) / r.height) * 2 - 1;
+    focused.querySelector(".lift").style.transform =
+      "translateY(-10px) scale(1.14) perspective(900px) rotateX(" + (ty * -6).toFixed(2) + "deg) rotateY(" + (tx * 8).toFixed(2) + "deg)";
+    focused.querySelector(".glare").style.transform = "translate(" + (tx * 22).toFixed(1) + "%," + (ty * 22).toFixed(1) + "%)";
+  }
   stage.addEventListener("mousedown", function (e) {
     if (e.button !== 0) return;
     var el = e.target.closest(".focusable"); pressEl = el; pressHeld = false;
@@ -664,7 +709,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   // ---- boot ----
   render();
-  setSolid(!!load("solid", false));
+  // Blur & motion effects cost GPU time; off by default on the TV, on in a desktop browser.
+  setFx(!!load("fx", !onTV));
   focus(stage.querySelector(".tile"));
 })();
 </script>

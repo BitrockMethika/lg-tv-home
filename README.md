@@ -14,7 +14,7 @@ screen, so pin it to the front of the app bar.
 | `src/app.html` | The source. Edit this file. |
 | `build.sh` | Wraps the source into `webos/index.html` |
 | `webos/` | The webOS app: `appinfo.json`, icons, `index.html` |
-| `dist/com.methika.tvhome_1.0.0_all.ipk` | Ready-to-install package |
+| `dist/com.methika.tvhome_1.1.0_all.ipk` | Ready-to-install package |
 
 ## Install on the TV
 
@@ -88,7 +88,7 @@ ares-device --device tv --system-info
 ### 4. Install and open the app
 
 ```bash
-ares-install --device tv dist/com.methika.tvhome_1.0.0_all.ipk
+ares-install --device tv dist/com.methika.tvhome_1.1.0_all.ipk
 ```
 
 ```bash
@@ -113,7 +113,8 @@ Developer Mode expires after 1,000 hours. Open the **Developer Mode** app on the
 | Red | Control Center: inputs, TV information, edit, Reduce Transparency, Settings |
 | Back | Close a panel, or go back to the dock |
 
-If scrolling feels slow, turn on **Reduce Transparency** in Control Center. It switches off the background blur.
+**Blur & Motion Effects** in Control Center turns on live glass blur and a slowly moving background. It's off by
+default on the TV because it costs GPU time; turn it on if your TV stays smooth with it.
 
 ## Changing the apps
 
@@ -138,7 +139,7 @@ ares-package webos -o dist
 ```
 
 ```bash
-ares-install --device tv dist/com.methika.tvhome_1.0.0_all.ipk
+ares-install --device tv dist/com.methika.tvhome_1.1.0_all.ipk
 ```
 
 ## Preview on a computer
