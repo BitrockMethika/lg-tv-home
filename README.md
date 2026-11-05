@@ -38,6 +38,22 @@ Install the LG webOS command-line tools:
 npm install -g @webos-tools/cli
 ```
 
+On a Mac, if that fails with `EACCES: permission denied`, your Node.js was installed for all users and npm
+can't write to `/usr/local` without admin rights. Point npm at a folder in your home directory instead, then
+run the install again:
+
+```bash
+mkdir -p ~/.npm-global && npm config set prefix ~/.npm-global
+```
+
+```bash
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+```bash
+npm install -g @webos-tools/cli
+```
+
 Get the project:
 
 ```bash
