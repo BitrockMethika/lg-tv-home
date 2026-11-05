@@ -110,7 +110,7 @@ Developer Mode expires after 1,000 hours. Open the **Developer Mode** app on the
 | Arrows | Move between apps |
 | OK | Open the app |
 | Hold OK (or press and hold with the pointer) | Rearrange: arrows move the app, OK drops it |
-| Red | Control Center: inputs, TV information, edit, Reduce Transparency, Settings |
+| Red | Control Center: inputs, TV information, edit, Blur & Motion Effects, Settings |
 | Back | Close a panel, or go back to the dock |
 
 **Blur & Motion Effects** in Control Center turns on live glass blur and a slowly moving background. It's off by
