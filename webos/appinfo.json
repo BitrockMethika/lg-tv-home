@@ -1,0 +1,13 @@
+{
+  "id": "com.methika.tvhome",
+  "version": "1.0.0",
+  "vendor": "Methika",
+  "type": "web",
+  "main": "index.html",
+  "title": "Home",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#050608",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}
